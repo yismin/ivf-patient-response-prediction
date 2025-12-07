@@ -95,6 +95,7 @@ class PDFExtractor:
                             e2_value = float(e2_match.group(1))
                             if 50 <= e2_value <= 5000:
                                 self.patient_data['e2_day5'] = e2_value
+                                print(f"✓ Extracted E2_day5: {e2_value}")
                                 return
             
     def calculate_afc_from_table(self, text):

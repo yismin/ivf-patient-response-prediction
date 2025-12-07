@@ -1,15 +1,9 @@
-"""
-Data Cleaning and Preprocessing for IVF Patient Dataset
-Handles de-identification, missing values, standardization
-"""
-
 import pandas as pd
 import numpy as np
 from pathlib import Path
 import re
 from sklearn.impute import KNNImputer
 from sklearn.linear_model import LinearRegression
-
 
 class DataCleaner:
     """Clean and preprocess IVF patient data"""
@@ -41,12 +35,12 @@ class DataCleaner:
             )
             
             self.cleaning_report.append(
-                f"✓ De-identified {len(patient_mapping)} patient names"
+                f" De-identified {len(patient_mapping)} patient names"
             )
             
             return patient_mapping
         else:
-            self.cleaning_report.append("✓ Patient IDs already de-identified")
+            self.cleaning_report.append(" Patient IDs already de-identified")
             return {}
     
     def standardize_protocols(self):
@@ -89,7 +83,7 @@ class DataCleaner:
         invalid = ~self.df['Protocol'].isin(valid_protocols)
         
         if invalid.any():
-            print(f"⚠ Warning: Found {invalid.sum()} invalid protocols:")
+            print(f" Warning: Found {invalid.sum()} invalid protocols:")
             print(self.df.loc[invalid, 'Protocol'].unique())
             
             # Try fuzzy matching for remaining
@@ -104,7 +98,7 @@ class DataCleaner:
         
         final_protocols = self.df['Protocol'].unique()
         self.cleaning_report.append(
-            f"✓ Standardized protocols to: {list(final_protocols)}"
+            f" Standardized protocols to: {list(final_protocols)}"
         )
     
     def handle_missing_values(self):
@@ -125,7 +119,7 @@ class DataCleaner:
                 afc_missing_pct = (afc_missing / len(self.df)) * 100
                 
                 if afc_missing_pct > 30:  # High missingness
-                    print(f"\n⚠ AFC has {afc_missing_pct:.1f}% missing - using KNN imputation")
+                    print(f"\n AFC has {afc_missing_pct:.1f}% missing - using KNN imputation")
                     
                     # Use KNN imputation based on correlated features
                     impute_features = ['Age', 'AMH', 'n_Follicles', 'AFC', 'E2_day5']
@@ -142,7 +136,7 @@ class DataCleaner:
                     self.df['AFC'] = self.df['AFC'].round().astype(int)
                     
                     self.cleaning_report.append(
-                        f"✓ Used KNN imputation for AFC ({afc_missing} values, {afc_missing_pct:.1f}%) - rounded to integers"
+                        f" Used KNN imputation for AFC ({afc_missing} values, {afc_missing_pct:.1f}%) - rounded to integers"
                     )
                 else:
                     # Low missingness - use median by age group
@@ -156,7 +150,7 @@ class DataCleaner:
                     )
                     self.df['AFC'] = self.df['AFC'].round().astype(int)
                     self.df.drop('age_group', axis=1, inplace=True)
-                    self.cleaning_report.append(f"✓ Filled {afc_missing} AFC values using median by age - rounded to integers")
+                    self.cleaning_report.append(f" Filled {afc_missing} AFC values using median by age - rounded to integers")
         
         # STRATEGY 2: E2_day5 - Median by protocol, keep 2 decimals
         if 'E2_day5' in self.df.columns:
@@ -167,7 +161,7 @@ class DataCleaner:
                 )
                 # Round to 2 decimal places for E2 values
                 self.df['E2_day5'] = self.df['E2_day5'].round(2)
-                self.cleaning_report.append(f"✓ Filled {e2_missing} E2_day5 values using median by protocol")
+                self.cleaning_report.append(f" Filled {e2_missing} E2_day5 values using median by protocol")
         
         # STRATEGY 3: n_Follicles - Must be INTEGER (discrete count)
         if 'n_Follicles' in self.df.columns:
@@ -192,12 +186,12 @@ class DataCleaner:
                     self.df.loc[mask_missing, 'n_Follicles'] = predictions
                     
                     self.cleaning_report.append(
-                        f"✓ Predicted {follicles_missing} n_Follicles values using AFC+AMH regression - rounded to integers"
+                        f" Predicted {follicles_missing} n_Follicles values using AFC+AMH regression - rounded to integers"
                     )
                 else:
                     # Fallback to median
                     self.df['n_Follicles'].fillna(self.df['n_Follicles'].median(), inplace=True)
-                    self.cleaning_report.append(f"✓ Filled {follicles_missing} n_Follicles using median")
+                    self.cleaning_report.append(f" Filled {follicles_missing} n_Follicles using median")
             
             # Ensure n_Follicles is integer
             self.df['n_Follicles'] = self.df['n_Follicles'].round().astype(int)
@@ -215,7 +209,7 @@ class DataCleaner:
                     lambda x: x.fillna(x.median())
                 )
                 self.df.drop('age_group', axis=1, inplace=True)
-                self.cleaning_report.append(f"✓ Filled {amh_missing} AMH values using median by age")
+                self.cleaning_report.append(f" Filled {amh_missing} AMH values using median by age")
             
             # Round AMH to 2 decimal places (standard lab precision)
             self.df['AMH'] = self.df['AMH'].round(2)
@@ -225,7 +219,7 @@ class DataCleaner:
             age_missing = self.df['Age'].isnull().sum()
             if age_missing > 0:
                 self.df['Age'].fillna(self.df['Age'].median(), inplace=True)
-                self.cleaning_report.append(f"✓ Filled {age_missing} Age values using median")
+                self.cleaning_report.append(f" Filled {age_missing} Age values using median")
             self.df['Age'] = self.df['Age'].round().astype(int)
         
         # STRATEGY 6: cycle_number - should be integer
@@ -233,20 +227,20 @@ class DataCleaner:
             cycle_missing = self.df['cycle_number'].isnull().sum()
             if cycle_missing > 0:
                 self.df['cycle_number'].fillna(self.df['cycle_number'].mode()[0], inplace=True)
-                self.cleaning_report.append(f"✓ Filled {cycle_missing} cycle_number values using mode")
+                self.cleaning_report.append(f" Filled {cycle_missing} cycle_number values using mode")
             self.df['cycle_number'] = self.df['cycle_number'].round().astype(int)
         
         # Check if any missing values remain
         missing_after = self.df.isnull().sum()
         if missing_after.sum() > 0:
-            print("\n⚠ Remaining missing values after imputation:")
+            print("\n Remaining missing values after imputation:")
             for col, count in missing_after[missing_after > 0].items():
                 print(f"  {col}: {count}")
                 # Fill any remaining with overall median
                 if self.df[col].dtype in ['float64', 'int64']:
                     self.df[col].fillna(self.df[col].median(), inplace=True)
         
-        print("\n✓ Missing value imputation complete")
+        print("\n Missing value imputation complete")
         print(f"Total missing values after: {self.df.isnull().sum().sum()}")
     
     def standardize_response_labels(self):
@@ -263,11 +257,11 @@ class DataCleaner:
         
         if invalid.any():
             self.cleaning_report.append(
-                f"⚠ Found {invalid.sum()} invalid response labels"
+                f" Found {invalid.sum()} invalid response labels"
             )
         else:
             self.cleaning_report.append(
-                f"✓ All response labels valid: {valid_labels}"
+                f" All response labels valid: {valid_labels}"
             )
     
     def validate_data_ranges(self):
@@ -290,11 +284,11 @@ class DataCleaner:
                 
                 if out_of_range > 0:
                     self.cleaning_report.append(
-                        f"⚠ {out_of_range} values in {col} outside expected range [{min_val}-{max_val} {unit}]"
+                        f" {out_of_range} values in {col} outside expected range [{min_val}-{max_val} {unit}]"
                     )
                 else:
                     self.cleaning_report.append(
-                        f"✓ All {col} values within valid range"
+                        f" All {col} values within valid range"
                     )
     
     def handle_outliers(self, method='iqr'):
@@ -317,7 +311,7 @@ class DataCleaner:
                 
                 if outliers > 0:
                     self.cleaning_report.append(
-                        f"⚠ Found {outliers} potential outliers in {col} (not removed - may be clinically valid)"
+                        f" Found {outliers} potential outliers in {col} (not removed - may be clinically valid)"
                     )
     
     def create_derived_features(self):
@@ -344,7 +338,7 @@ class DataCleaner:
         self.df['follicle_afc_ratio'] = self.df['follicle_afc_ratio'].round(2)
         
         self.cleaning_report.append(
-            "✓ Created derived features: age_group, amh_category, follicle_afc_ratio"
+            " Created derived features: age_group, amh_category, follicle_afc_ratio"
         )
     
     def get_summary_statistics(self):
@@ -362,10 +356,6 @@ class DataCleaner:
     
     def clean(self):
         """Execute full cleaning pipeline"""
-        
-        print("\n" + "="*60)
-        print("STARTING DATA CLEANING PIPELINE")
-        print("="*60)
         print(f"Original shape: {self.original_shape}")
         print()
         
@@ -380,16 +370,11 @@ class DataCleaner:
         
         # Generate summary
         summary = self.get_summary_statistics()
-        
-        print("\n" + "="*60)
-        print("CLEANING REPORT:")
-        print("="*60)
+
         for item in self.cleaning_report:
             print(item)
         
-        print("\n" + "="*60)
         print("SUMMARY STATISTICS:")
-        print("="*60)
         print(f"Total patients: {summary['total_patients']}")
         print(f"Total features: {summary['features']}")
         print(f"\nResponse distribution:")
@@ -405,9 +390,7 @@ class DataCleaner:
         print(f"  n_Follicles: {self.df['n_Follicles'].dtype} (should be int)")
         print(f"  Age: {self.df['Age'].dtype} (should be int)")
         print(f"  AMH: {self.df['AMH'].dtype} (should be float)")
-        
-        print("="*60 + "\n")
-        
+                
         return self.df, summary, patient_mapping
 
 
@@ -422,7 +405,7 @@ def main():
     # If PDF data doesn't exist yet, use raw data
     if not input_path.exists():
         input_path = project_root / "data" / "raw" / "patients.csv"
-        print(f"⚠ Using raw data from: {input_path}")
+        print(f"Using raw data from: {input_path}")
     
     # Load data
     df = pd.read_csv(input_path)
@@ -434,7 +417,7 @@ def main():
     # Save cleaned data
     output_path.parent.mkdir(parents=True, exist_ok=True)
     cleaned_df.to_csv(output_path, index=False)
-    print(f"✓ Saved cleaned data to: {output_path}")
+    print(f" Saved cleaned data to: {output_path}")
     
     # Save mapping (for audit purposes)
     if mapping:
@@ -442,7 +425,7 @@ def main():
         pd.DataFrame(list(mapping.items()), columns=['original', 'deidentified']).to_csv(
             mapping_path, index=False
         )
-        print(f"✓ Saved patient mapping to: {mapping_path}")
+        print(f" Saved patient mapping to: {mapping_path}")
     
     return cleaned_df
 
