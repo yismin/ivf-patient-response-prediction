@@ -8,3 +8,9 @@ seaborn
 plotly
 jupyter
 pdfplumber
+xgboost
+joblib
+fastapi
+uvicorn
+streamlit
+pytest
